@@ -56,3 +56,47 @@ String sDate1="01/03/2018";
     lockingrdd
 
   }
+
+
+
+
+  def getPatientgroupByandKeyOrderBy(rdd: RDD[CassandraRow]): Array[(String,Array[Long])] = {
+
+    val lockingrdd = rdd.filter(l => !l.isNullAt("patientuid") && !l.isNullAt("encounterdate") && l.getString("patientuid").equals("45850458-5bf9-4b70-b721-8b6b5358721f"))
+      .map(l => (l.getString("patientuid"), l.getDate("encounterdate").getTime)).groupByKey()
+      .map(r => (r._1,r._2.toArray.sorted)).collect()
+
+    //.collect() //.map(r => (r._1,r._2)).collect()
+     // .sortBy(_._2,false).collect()
+    // .map( x => (x._1,new DateTime(x._2)))    //collect().sortBy( x => x._2.max)
+     //.reduceByKey((x, y) => if (x.isBefore(y)) x else y).collect()
+
+
+
+
+   for(x<-lockingrdd){
+     
+     var min = new DateTime(x._2(0))
+     var req = ""+min
+
+     x._2.filter( dt => min.plusDays(30).isBefore(new DateTime(dt)))
+
+     for(dt <-x._2) {
+
+       if ( min.plusDays(29).isBefore(new DateTime(dt))){
+
+         min = new DateTime(dt)
+         req = req+" "+min
+       }
+
+
+     }
+
+     println(" required date ===>>"+ req)
+
+   }
+
+    lockingrdd
+
+  }
+
