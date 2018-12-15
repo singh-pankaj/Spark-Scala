@@ -1,0 +1,97 @@
+
+  test("itShouldReturn_Cummulative") {
+    val patientHistoryRDD: RDD[CassandraRow] = TestUtil.spark.sparkContext.parallelize(Seq(
+      CassandraRow.fromMap(Map("patientuid" -> "P1", "element" -> "e_start", "element_date" -> "2018-01-01 00:00:00.000+00:00", "elementvalue" -> "1")),
+      CassandraRow.fromMap(Map("patientuid" -> "P1", "element" -> "e_end", "element_date" -> "2018-05-04 00:00:00.000+00:00", "elementvalue" -> "1")),
+      CassandraRow.fromMap(Map("patientuid" -> "P1", "element" -> "e_start", "element_date" -> "2018-05-05 00:00:00.000+00:00", "elementvalue" -> "1")),
+      CassandraRow.fromMap(Map("patientuid" -> "P2", "element" -> "e_start", "element_date" -> "2018-05-05 00:00:00.000+00:00", "elementvalue" -> "1")),
+      CassandraRow.fromMap(Map("patientuid" -> "P2", "element" -> "e_end", "element_date" -> "2018-09-10 00:00:00.000+00:00", "elementvalue" -> "1")),
+      CassandraRow.fromMap(Map("patientuid" -> "P2", "element" -> "e_end", "element_date" -> "2018-05-10 00:00:00.000+00:00", "elementvalue" -> "1")),
+      CassandraRow.fromMap(Map("patientuid" -> "P2", "element" -> "e_start", "element_date" -> "2018-09-01 00:00:00.000+00:00", "elementvalue" -> "1")),
+      CassandraRow.fromMap(Map("patientuid" -> "P1", "element" -> "e_end", "element_date" -> "2018-05-10 00:00:00.000+00:00", "elementvalue" -> "1"))
+    ))
+
+    val visit = CassandraRow.fromMap(Map("practiceuid"->"practice1","patientuid" -> "B18D78A0-A0CB-4965-AEA4-F9CFCF4C76AD", "visituid" ->"V1","hRate" -> "1", "hRate_date" -> "2018-10-15 00:00:00.000+00:00"))
+
+    def getDayDiff(startDate:Date,endDate:Date):Int={
+
+
+
+      val startCalendar = new GregorianCalendar
+      startCalendar.setTime(startDate)
+      val endCalendar = new GregorianCalendar
+      endCalendar.setTime(endDate)
+
+      val diffYear = endCalendar.get(Calendar.YEAR) - startCalendar.get(Calendar.YEAR)
+      val diffMonth = diffYear * 12 + endCalendar.get(Calendar.MONTH) - startCalendar.get(Calendar.MONTH)
+
+      //  println("diffrence is " + diffMonth)
+      return Math.abs(diffMonth)
+
+
+    }
+//    getDayDiff(visit.getDate(""),visit.getDate(""))
+
+    /*
+
+    "P1" _> "e_start", "2018-01-01 00:00:00.000+00:00")   2018-05-05 00:00:00.000+00:00
+            e_end      2018-05-04 00:00:00.000+00:00"   2018-05-10 00:00:00.000+00:00
+
+      "P2", "element" -> "e_start" 2018-05-05 00:00:00.000+00:00   2018-09-01 00:00:00.000+00:00
+                 e_end ->  2018-05-10 00:00:00.000+00:00  2018-09-10 00:00:00.000+00:00
+
+   */
+    val e_startRDD = patientHistoryRDD.filter(_.getString("element").equals("e_start")).map(r=> (r.getString("patientuid"),r.getDate("element_date").getTime)).groupByKey().map(r => (r._1,r._2.toArray.sorted)).collect()
+    val e_endRDD = patientHistoryRDD.filter(_.getString("element").equals("e_end")).map(r=> (r.getString("patientuid"),r.getDate("element_date").getTime)).groupByKey().map(r => (r._1,r._2.toArray.sorted)).collect()
+
+
+
+
+
+  //  e_startRDD.foreach(r => r._2.foreach(println(new DateTime(_))))
+    println("endRDD====")
+  //  e_endRDD.foreach(println)
+
+   // val e_start = patientHistoryRDD.map(r=> (r.getString("patientuid"),r.getString("element_date"))).groupByKey().sortBy(_._2,false)
+
+  /*  val e_start = patientHistoryRDD.filter(_.getString("element").equals("e_start")).map(r=> (r.getString("patientuid"),r.getDate("element_date").getTime)).sortBy(_._2,false)
+    val e_end = patientHistoryRDD.filter(_.getString("element").equals("e_end")).map(r=> (r.getString("patientuid"),r.getDate("element_date").getTime)).sortBy(_._2,false)
+
+    e_start.foreach(println)*/
+   // var e_startRssDD : RDD[(String,Array[Long])] = null
+
+  //  var mylist:List[(String,DateTime,DateTime)]= null
+ //   var mylist:util.ArrayList[(String,DateTime,DateTime)] = new util.ArrayList[(String,DateTime,DateTime)]()
+
+    //var mylist:List[(String,String,String)] = List(("","",""))
+
+ //   var mylist = new ListBuffer[(String,String,String)]()
+
+
+  //  mylist.addString("",new DateTime("") , new DateTime(""))
+
+    var mylist = new ListBuffer[(String,DateTime,DateTime)]()
+    
+    e_startRDD.foreach(r => e_endRDD.foreach(x => if(r._1.equals(x._1)) {
+
+      var count=0
+      var counter=0
+        for (z <- r._2) {
+          count=count+1
+          for (y <- x._2) {
+            counter=counter+1
+            if(new DateTime(z).isBefore(new DateTime(y))  && count==counter ) {
+             // println(r._1, new DateTime(z), new DateTime(y))
+              mylist.append((r._1,new DateTime(z),new DateTime(y)))
+
+          }
+        }
+          counter=0
+      }
+
+    }
+    ))
+
+    mylist.toList.foreach(println)
+    mylist.toList.map(r => (r._1,(Days.daysBetween(r._2,r._3).getDays))).foreach(println)
+    }
